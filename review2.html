@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>餐厅文字评论</title>
+  <style>
+    :root{
+      --bg:#f8f9fa;
+      --card:#ffffff;
+      --text:#212529;
+      --sub:#6c757d;
+      --brand:#007bff;
+      --muted:#dee2e6;
+      --accent:#28a745;
+      --gutter:16px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial}
+
+    .app{max-width:520px; margin:0 auto; min-height:100%; display:flex; flex-direction:column}
+
+    header{position:sticky; top:0; z-index:10; background:#fff; border-bottom:1px solid var(--muted)}
+    .safe{padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left)}
+    .head{display:flex; align-items:center; gap:12px; padding:14px calc(var(--gutter) + env(safe-area-inset-right)) 12px calc(var(--gutter) + env(safe-area-inset-left));}
+    .logo{width:40px; height:40px; border-radius:12px; background:var(--brand)}
+    .title-wrap{flex:1}
+    h1{margin:0; font-size:18px}
+    .meta{font-size:12px; color:var(--sub); display:flex; gap:10px; align-items:center}
+    .star{color:#ffc107}
+
+    main{padding:8px calc(var(--gutter) + env(safe-area-inset-right)) 24px calc(var(--gutter) + env(safe-area-inset-left));}
+
+    .filter{display:flex; gap:8px; padding:8px calc(var(--gutter) + env(safe-area-inset-right)) 12px calc(var(--gutter) + env(safe-area-inset-left));overflow:auto; scrollbar-width:none;
+  scroll-padding-left: calc(var(--gutter) + env(safe-area-inset-left)); }
+    .chip{padding:8px 12px; font-size:12px; border:1px solid var(--muted); border-radius:999px; color:var(--sub); background:#f8f9fa; white-space:nowrap}
+    .chip.active{border-color:var(--brand); color:var(--brand); background:#e9f5ff}
+
+    .card{background:var(--card); border:1px solid var(--muted); border-radius:16px; padding:12px; margin:10px 0; box-shadow:0 2px 6px rgba(0,0,0,0.05)}
+    .row{display:flex; gap:12px}
+    .avatar{width:40px; height:40px; border-radius:50%; background:#e9ecef; display:grid; place-items:center; color:#495057; font-weight:700}
+    .who{flex:1}
+    .who .name{font-size:14px; font-weight:600}
+    .who .sub{font-size:12px; color:var(--sub)}
+    .who .tags{margin-top:4px; display:flex; flex-wrap:wrap; gap:6px}
+    .tag{font-size:10px; padding:4px 8px; border-radius:999px; border:1px solid var(--muted); color:#6c757d}
+
+    .content{margin-top:10px; font-size:14px; line-height:1.65; color:var(--text)}
+    .content.clamp{display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden}
+    .more{margin-top:6px; border:none; background:transparent; color:var(--brand); font-size:12px; padding:0; cursor:pointer}
+
+    /* 图片区域 */
+    .photos{margin-top:10px}
+    .grid{display:grid; grid-template-columns:repeat(3, 1fr); gap:6px}
+    .thumb{width:100%; aspect-ratio:1/1; border-radius:10px; border:1px solid var(--muted); background:#f8f9fa; overflow:hidden; position:relative; cursor:pointer}
+    .thumb img{width:100%; height:100%; object-fit:cover; display:block}
+
+    /* 全屏图片查看 */
+    .viewer{position:fixed; inset:0; background:rgba(0,0,0,.75); display:none; align-items:center; justify-content:center; z-index:50}
+    .viewer img{max-width:92vw; max-height:86vh; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.4)}
+    .viewer.show{display:flex}
+
+    footer{color:var(--sub); font-size:12px; text-align:center; padding:24px 8px 32px}
+    .spacer{height: env(safe-area-inset-bottom)}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="safe">
+      <div class="head">
+        <div class="logo" aria-hidden="true"></div>
+        <div class="title-wrap">
+          <h1>X餐厅</h1>
+          <div class="meta">
+            <span class="star">★ ★ ★ ★ ☆</span>
+            <span>4.3 · 182 条评论</span>
+            <span>·</span>
+            <span></span>
+          </div>
+        </div>
+      </div>
+      <div class="filter" role="tablist" aria-label="筛选">
+        <div class="chip active" role="tab" aria-selected="true">全部</div>
+        <div class="chip" role="tab">环境好</div>
+        <div class="chip" role="tab">上菜快</div>
+        <div class="chip" role="tab">适合聚会</div>
+        <div class="chip" role="tab">服务佳</div>
+      </div>
+    </header>
+
+    <main id="list"></main>
+
+
+  </div>
+
+  <!-- 图片查看器 -->
+  <div class="viewer" id="viewer" aria-hidden="true">
+    <img alt="预览" id="viewerImg" />
+  </div>
+
+  <template id="card-tpl">
+    <article class="card" data-id="">
+      <div class="row">
+        <div class="avatar" aria-hidden="true">📝</div>
+        <div class="who">
+          <div class="name">访客</div>
+          <div class="sub">
+            <span class="date">2025-09-17</span>
+            · <span class="stars">★★★★★</span>
+          </div>
+          <div class="tags"></div>
+        </div>
+      </div>
+
+      <div class="content clamp"></div>
+      <button class="more" hidden>展开全文</button>
+
+      <!-- 图片区域（若无图片将自动隐藏） -->
+      <div class="photos">
+        <div class="grid"></div>
+      </div>
+    </article>
+  </template>
+
+  <script>
+    // —— 手写数组（每条可独立改）——
+    const reviews = [
+      { id:1, name:"用户 1", date:"2025-09-17", stars:"★★★★★", content:"和朋友小聚，甜品菜品都很有趣，清淡但好吃，很棒的一次体验", photos:["image/1-1.jpg","image/1-2.jpg","image/1-3.jpg"] },
+      { id:2, name:"用户2", date:"2025-09-10", stars:"★★★★☆", content:"经常来吃，味道非常好。环境很安静优雅，服务态度很好，还会再来的", photos:["image/2-1.jpg","image/2-2.jpg","image/2-3.jpg"] },
+      { id:3, name:"用户 3", date:"2025-09-04", stars:"★☆☆☆☆", content:"一家种草很久的店，聚餐的时候就一起来试试了。结果…顺利拔草，灯黑菜少味道差", photos:["image/3-1.jpg","image/3-2.jpg"] },
+      { id:4, name:"用户 4", date:"2025-08-19", stars:"★★★★★", content:" 整体走清爽融合路线，调味不重却有层次，像蒜香蘑菇配嫩牛排这种中西搭配很舒服，吃完没有负担，适合聚会。", photos:["image/4-1.jpg","image/4-2.jpg","image/4-3.jpg"] },
+      { id:5, name:"用户 5", date:"2025-08-18", stars:"★★★★☆", content:" 环境很好，主打融合菜，很有趣，下次还会再来", photos:["image/5-1.jpg","image/5-2.jpg","image/5-3.jpg"] },
+      { id:6, name:"用户 6", date:"2025-08-18", stars:"★★★☆☆", content:" 餐厅服务有礼，上菜顺畅；菜单里有不少果香与海鲜的组合，清新解腻，适合连吃多道也不腻。", photos:["image/6-1.jpg","image/6-2.jpg","image/6-3.jpg"] },
+      { id:7, name:"用户 7", date:"2025-08-08", stars:"★★★★★", content:"环境很雅致，菜的味道也不错，鸡和虾都能尝得出非常新鲜", photos:["image/7-1.jpg","image/7-2.jpg","image/7-3.jpg"] },
+      { id:8, name:"用户 8", date:"2025-08-03", stars:"★★★★☆", content:" 融合不浮夸、细节见功力；板栗酱汁鸡强烈推荐。", photos:["image/8-1.jpg","image/8-2.jpg"] },
+      { id:9, name:"用户 9", date:"2025-08-02", stars:"★★★★☆", content:"很喜欢的一家店，从环境到菜品再到服务都很棒！", photos:["image/9-1.jpg","image/9-2.jpg","image/9-3.jpg"] },
+      { id:10, name:"用户 10", date:"2025-08-02", stars:"★★★★★", content:"非常棒的一家融合菜馆，不管是西餐的披萨还是中餐的炒菜都超预期了！", photos:["image/10-1.jpg","image/10-2.jpg"] }
+    ];
+
+    const $list = document.getElementById('list');
+    const tpl = document.getElementById('card-tpl');
+
+    // 渲染卡片
+    function createCard(data){
+      const node = tpl.content.cloneNode(true);
+      const card = node.querySelector('.card');
+      card.dataset.id = data.id;
+
+      card.querySelector('.name').textContent = data.name;
+      card.querySelector('.date').textContent = data.date;
+      card.querySelector('.stars').textContent = data.stars;
+
+      // 标签
+      const tagsWrap = card.querySelector('.tags');
+      (data.tags||[]).forEach(t=>{
+        const s = document.createElement('span');
+        s.className = 'tag';
+        s.textContent = t;
+        tagsWrap.appendChild(s);
+      });
+
+      // 文本内容 + 展开/收起
+      const contentEl = card.querySelector('.content');
+      const moreBtn = card.querySelector('.more');
+      contentEl.textContent = data.content || '';
+      // 先默认折叠，等插入 DOM 后检测是否需要“展开”按钮
+      requestAnimationFrame(()=>{
+        // 仅当超出行高才显示“展开”按钮
+        if(contentEl.scrollHeight - contentEl.clientHeight > 2){
+          moreBtn.hidden = false;
+        }
+      });
+      moreBtn.addEventListener('click', ()=>{
+        const clamped = contentEl.classList.contains('clamp');
+        contentEl.classList.toggle('clamp');
+        moreBtn.textContent = clamped ? '收起' : '展开全文';
+      });
+
+      // 图片
+      const photosWrap = card.querySelector('.photos');
+      const grid = card.querySelector('.photos .grid');
+      if(Array.isArray(data.photos) && data.photos.length){
+        data.photos.forEach((src,idx)=>{
+          const box = document.createElement('div');
+          box.className = 'thumb';
+          const img = document.createElement('img');
+          img.src = src; img.alt = `图片${idx+1}`;
+          box.appendChild(img);
+          box.addEventListener('click', ()=> openViewer(src));
+          grid.appendChild(box);
+        });
+      }else{
+        photosWrap.style.display = 'none';
+      }
+
+      return node;
+    }
+
+    // 渲染列表
+    function render(){
+      $list.innerHTML = '';
+      reviews.forEach(r=>{ $list.appendChild(createCard(r)); });
+    }
+    render();
+
+    // 简易图片查看器
+    const viewer = document.getElementById('viewer');
+    const viewerImg = document.getElementById('viewerImg');
+    function openViewer(src){ viewerImg.src = src; viewer.classList.add('show'); viewer.setAttribute('aria-hidden','false'); }
+    viewer.addEventListener('click', ()=>{ viewer.classList.remove('show'); viewer.setAttribute('aria-hidden','true'); viewerImg.removeAttribute('src'); });
+  </script>
+</body>
+</html>
